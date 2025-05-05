@@ -61,16 +61,17 @@ V0.01 - initial release
 
        ![example1](media/token_acl.png)
 
-2. Make sure the "Corsinvest.ProxmoxVE.Api" module exists on the Probe under the Powershell Module Path
-   - `C:\Program Files\PowerShell\Modules\Corsinvest.ProxmoxVE.Api`
-       - https://github.com/Corsinvest/cv4pve-api-powershell
-       -  open pwsh.exe (powershell 7) and `Install-Module -Name Corsinvest.ProxmoxVE.Api -Scope AllUsers`
-
-3. Make sure Powershell 7 is installed and available
+2. Make sure Powershell 7 is installed and available
     - `C:\Program Files\PowerShell\7\pwsh.exe`
         - https://aka.ms/powershell-release?tag=lts
         - `winget install --id Microsoft.PowerShell`
     
+
+3. Make sure the "Corsinvest.ProxmoxVE.Api" module exists on the Probe under the Powershell Module Path
+   - `C:\Program Files\PowerShell\Modules\Corsinvest.ProxmoxVE.Api`
+       - https://github.com/Corsinvest/cv4pve-api-powershell
+       -  open pwsh.exe (powershell 7) and `Install-Module -Name Corsinvest.ProxmoxVE.Api -Scope AllUsers`
+
 4. Place `PRTG-PVE-Status.ps1` under `C:\Program Files (x86)\PRTG Network Monitor\Custom Sensors\EXEXML`
 
 5. Create new sensor
