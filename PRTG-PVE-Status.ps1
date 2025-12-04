@@ -26,7 +26,7 @@ param(
     [string] $APITOKEN = '',
     [switch] $SkipCertCheck,
     [switch] $channel_nodes,
-    [switch] $channel_nodes_detail,
+    [switch] $channel_node_details,
     [switch] $channel_snapshot,
     [switch] $channel_vm,
     [switch] $channel_lxc,
@@ -136,7 +136,7 @@ if (($Port -eq "") -or ($null -eq $Port)) {
 }
 
 # Check Channel Selection
-if ((-not $channel_nodes) -and (-not $channel_nodes_detail) -and (-not $channel_snapshot) -and (-not $channel_vm) -and (-not $channel_lxc)) {
+if ((-not $channel_nodes) -and (-not $channel_node_details) -and (-not $channel_snapshot) -and (-not $channel_vm) -and (-not $channel_lxc)) {
     $channel_nodes = $true
     $channel_snapshot = $true
     $channel_vm = $true
@@ -340,6 +340,106 @@ if ($channel_nodes) {
 <limitmode>1</limitmode>
 <LimitMaxError>0</LimitMaxError>
 </result>"
+}
+
+# NODES Details
+if ($channel_node_details) {
+    $all_Nodes = (Get-PveNodes -PveTicket $ticket).ToData()
+    $all_Nodes = $all_Nodes | Where-Object { $_.type -eq "node" }
+    if(($all_Nodes | Measure-Object).count -eq 0 ){
+        Write-Output "<prtg>"
+        Write-Output "<error>1</error>"
+        Write-Output "<text>Error In Get-PveNodes - Nodes Count is 0</text>"
+        Write-Output "</prtg>"
+        Exit
+    }
+    #Node
+    if ($ExcludeNode -ne "") {
+        $all_Nodes = $all_Nodes | Where-Object { $_.Name -notmatch $ExcludeNode }  
+    }
+    
+    if ($IncludeNode -ne "") {
+        $all_Nodes = $all_Nodes | Where-Object { $_.node -match $IncludeNode }  
+    }
+    #End Filter
+
+    $NodesOnline = $all_Nodes | Where-Object { $_.status -eq "online" }
+    $NodesOffline = $all_Nodes | Where-Object { $_.status -eq "offline" }
+    $NodesUnkown = $all_Nodes | Where-Object { ($_.status -ne "online") -and ($_.status -ne "offline") } 
+
+    $Nodes_Max_CPU_AVG_5min = 0
+    $Nodes_Max_Memory = 0
+    $Nodes_Max_Root_Usage = 0
+    $Nodes_Max_io_wait = 0
+
+    foreach($Node in $all_Nodes){
+        $Node_Status = (Get-PveNodesStatus -Node $Node.node).Response.data
+
+        if($null -eq $Node_Status){
+            Return 
+        }
+
+        # Get CPU Load AVG for 5min
+        $temp_cpu_usage = ($Node_Status.loadavg[1] / $Node_status.cpuinfo.cpus) * 100
+        $temp_cpu_usage = [math]::Round($temp_cpu_usage,2)
+        if($temp_cpu_usage -gt $Nodes_Max_CPU_AVG_5min){
+            $Nodes_Max_CPU_AVG_5min = $temp_cpu_usage
+        }
+
+        # Get Memory Usage
+        $temp_memory_usage = ($Node_Status.memory.used / $Node_Status.memory.total) * 100
+        $temp_memory_usage = [math]::Round($temp_memory_usage,2)
+        if($temp_memory_usage -gt $Nodes_Max_Memory){
+            $Nodes_Max_Memory = $temp_memory_usage
+        }
+
+        # Get Root Usage
+        $temp_root_usage = ($Node_Status.rootfs.used / $Node_Status.rootfs.total) * 100
+        $temp_root_usage = [math]::Round($temp_root_usage,2)
+        if($temp_root_usage -gt $Nodes_Max_Root_Usage){
+            $Nodes_Max_Root_Usage = $temp_root_usage
+        }
+
+        # Get io Wait
+        $temp_wait= ($Node_Status.wait) * 100
+        $temp_wait = [math]::Round($temp_wait,2)
+        if($temp_wait -gt $Nodes_Max_io_wait){
+            $Nodes_Max_io_wait = $temp_wait
+        }
+    }
+    $xmlOutput += "<result>
+<channel>Node Max Memory</channel>
+<value>$($Nodes_Max_Memory)</value>
+<unit>Percent</unit>
+<float>1</float>
+<limitmode>1</limitmode>
+<LimitMaxError>90</LimitMaxError>
+</result>
+<result>
+<channel>Node Max CPU 5min</channel>
+<value>$($Nodes_Max_CPU_AVG_5min)</value>
+<unit>Percent</unit>
+<float>1</float>
+<limitmode>1</limitmode>
+<LimitMaxError>90</LimitMaxError>
+</result>
+<result>
+<channel>Node Max Root Usage</channel>
+<value>$($Nodes_Max_Root_Usage)</value>
+<unit>Percent</unit>
+<float>1</float>
+<limitmode>1</limitmode>
+<LimitMaxError>90</LimitMaxError>
+</result>
+<result>
+<channel>Node Max IO Wait</channel>
+<value>$($Nodes_Max_io_wait)</value>
+<unit>Percent</unit>
+<float>1</float>
+<limitmode>1</limitmode>
+<LimitMaxError>3</LimitMaxError>
+</result>"
+
 }
 
 # SNAPSHOT
